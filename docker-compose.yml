@@ -1,0 +1,28 @@
+version: '2'
+services:
+  heroes:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    environment:
+      - APP_PORT=3001
+      - DB_HOST=heroes_redis_1
+      - DB_PORT=6379
+      - DB_PASSWORD=
+    ports:
+      - 3001:3000
+    volumes:
+      - .:/go/src/github.com/bliuchak/heroes
+    networks:
+      - local
+
+  redis:
+    image: redis:latest
+    ports:
+      - 6379:6379
+    networks:
+      - local
+
+networks:
+  local:
+    external: true
