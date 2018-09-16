@@ -12,6 +12,13 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// Serverer is interface for server
+type Serverer interface {
+	InitRouter()
+	SetMiddleware()
+	Run() error
+}
+
 // Server app container for main dependenciess
 type Server struct {
 	Router  *mux.Router
@@ -39,7 +46,7 @@ func (s *Server) SetMiddleware() {
 	md := middleware.Middleware{Logger: s.Logger}
 	md.SetLogger(s.Logger)
 
-	s.Router.Use(md.HttpLogger)
+	s.Router.Use(md.HTTPLogger)
 }
 
 // Run runs http server

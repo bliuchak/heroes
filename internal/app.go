@@ -10,25 +10,27 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// App ...
+// App is an application container with necessary dependencies
 type App struct {
-	Logger zerolog.Logger
+	Logger  zerolog.Logger
 	Storage storage.Storager
-	Server *server.Server
-	Config config.Config
+	Server  server.Serverer
+	Config  config.Config
 }
 
-// NewApplication ...
+// NewApplication returns pointer to App structure with filled data
 func NewApplication(config config.Config) *App {
 	return &App{
 		Config: config,
 	}
 }
 
+// InitLogger sets logger to App structure
 func (a *App) InitLogger() {
 	a.Logger = zerolog.New(os.Stdout).Output(zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger()
 }
 
+// InitStorage sets database to App structure
 func (a *App) InitStorage() error {
 	s, err := db.NewRedis(a.Config.Database.Host, a.Config.Database.Password, a.Config.Database.Port)
 	if err != nil {
@@ -38,6 +40,7 @@ func (a *App) InitStorage() error {
 	return nil
 }
 
+// Run runs server from App structure
 func (a *App) Run() error {
 	a.Logger.Info().Msg("Run app")
 

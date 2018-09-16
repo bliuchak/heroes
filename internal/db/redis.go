@@ -12,10 +12,13 @@ const (
 	heroPrefix = "hero"
 )
 
+// Redis contains client which operates with storage
+// TODO: define interface for redis
 type Redis struct {
 	Client redis.Client
 }
 
+// NewRedis returns pointer to Redis structure with filled data
 func NewRedis(host, password string, port int) (*Redis, error) {
 	opt := redis.Options{
 		Addr:     host + ":" + strconv.Itoa(port),
@@ -32,10 +35,12 @@ func NewRedis(host, password string, port int) (*Redis, error) {
 	return &Redis{Client: *c}, nil
 }
 
+// Status checks storage connection status
 func (r *Redis) Status() (string, error) {
 	return r.Client.Ping().Result()
 }
 
+// GetHeroes gets all heroes
 func (r *Redis) GetHeroes() ([]storage.Hero, error) {
 	var heroes []storage.Hero
 
@@ -54,6 +59,7 @@ func (r *Redis) GetHeroes() ([]storage.Hero, error) {
 	return heroes, nil
 }
 
+// GetHero gets hero by ID
 func (r *Redis) GetHero(id string) (storage.Hero, error) {
 	res, err := r.Client.Get(heroPrefix + "." + id).Result()
 	if err != nil {
@@ -66,6 +72,7 @@ func (r *Redis) GetHero(id string) (storage.Hero, error) {
 	return storage.Hero{ID: id, Name: res}, nil
 }
 
+// CreateHero creates new hero by ID and Name
 func (r *Redis) CreateHero(id, name string) error {
 	_, err := r.Client.Set(heroPrefix+"."+id, name, 0).Result()
 	if err != nil {
@@ -75,6 +82,7 @@ func (r *Redis) CreateHero(id, name string) error {
 	return nil
 }
 
+// DeleteHero deletes hero by ID
 func (r *Redis) DeleteHero(id string) error {
 	res, err := r.Client.Del(heroPrefix + "." + id).Result()
 	if err != nil {

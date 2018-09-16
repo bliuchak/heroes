@@ -9,10 +9,13 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// HeroHandler contains hero handler data
+// extend common handler
 type HeroHandler struct {
 	CommonHandler
 }
 
+// GetHeroesHandler handler to get all heroes
 func (hh *HeroHandler) GetHeroesHandler(w http.ResponseWriter, r *http.Request) {
 	hs, err := hh.Storage.GetHeroes()
 	if err != nil {
@@ -39,6 +42,7 @@ func (hh *HeroHandler) GetHeroesHandler(w http.ResponseWriter, r *http.Request) 
 	return
 }
 
+// GetHeroHandler handler to get single hero
 func (hh *HeroHandler) GetHeroHandler(w http.ResponseWriter, r *http.Request) {
 	v := mux.Vars(r)
 	h, err := hh.Storage.GetHero(v["id"])
@@ -66,6 +70,7 @@ func (hh *HeroHandler) GetHeroHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
+// CreateHeroHandler handler to create a new hero
 func (hh *HeroHandler) CreateHeroHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	b, err := ioutil.ReadAll(r.Body)
@@ -93,6 +98,7 @@ func (hh *HeroHandler) CreateHeroHandler(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusOK)
 }
 
+// DeleteHeroHandler handler to delete hero
 func (hh *HeroHandler) DeleteHeroHandler(w http.ResponseWriter, r *http.Request) {
 	v := mux.Vars(r)
 	err := hh.Storage.DeleteHero(v["id"])
