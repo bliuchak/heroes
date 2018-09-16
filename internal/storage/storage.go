@@ -1,20 +1,6 @@
 package storage
 
-type Hero struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-
-func (h *Hero) IsValid() bool {
-	if h.ID == "" {
-		return false
-	}
-	if h.Name == "" {
-		return false
-	}
-	return true
-}
-
+// Storager general storage interface
 type Storager interface {
 	Status() (string, error)
 	GetHeroes() ([]Hero, error)
@@ -23,41 +9,19 @@ type Storager interface {
 	DeleteHero(id string) error
 }
 
-type ErrNothingToDelete struct {
-	message string
+// Hero contains hero data
+type Hero struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
-func NewErrNothingToDelete(message string) *ErrNothingToDelete {
-	return &ErrNothingToDelete{
-		message: message,
+// IsValid validates hero structure
+func (h *Hero) IsValid() bool {
+	if h.ID == "" {
+		return false
 	}
-}
-func (e *ErrNothingToDelete) Error() string {
-	return e.message
-}
-
-type ErrHeroNotExist struct {
-	message string
-}
-
-func NewErrHeroNotExist(message string) *ErrHeroNotExist {
-	return &ErrHeroNotExist{
-		message: message,
+	if h.Name == "" {
+		return false
 	}
-}
-func (e *ErrHeroNotExist) Error() string {
-	return e.message
-}
-
-type ErrHeroRequestValidation struct {
-	message string
-}
-
-func NewErrHeroRequestValidation(message string) *ErrHeroRequestValidation {
-	return &ErrHeroRequestValidation{
-		message: message,
-	}
-}
-func (e *ErrHeroRequestValidation) Error() string {
-	return e.message
+	return true
 }

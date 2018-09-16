@@ -13,6 +13,7 @@ type errInvalidJSON struct {
 	Message string `json:"message"`
 }
 
+// IsJSONValid validates if JSON in request body is valid
 func IsJSONValid(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		reqBody, err := ioutil.ReadAll(r.Body)
