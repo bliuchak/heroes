@@ -3,6 +3,8 @@ package server
 import (
 	"net/http"
 
+	"github.com/bliuchak/heroes/internal/server/json"
+
 	"github.com/bliuchak/heroes/internal/server/handlers"
 	"github.com/bliuchak/heroes/internal/server/middleware"
 )
@@ -12,6 +14,7 @@ func (s *Server) SetRoutes() {
 	heroHandler := handlers.HeroHandler{}
 	heroHandler.SetLogger(s.Logger)
 	heroHandler.SetStorage(s.Storage)
+	heroHandler.SetJSON(new(json.JSON))
 
 	statusHandler := handlers.StatusHandler{}
 
