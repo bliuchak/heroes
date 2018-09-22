@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,45 +12,177 @@ import (
 	. "github.com/stretchr/testify/mock"
 )
 
-func TestGetHeroHandler(t *testing.T) {
-	// Create a request to pass to our handler. We don't have any query parameters for now, so we'll
-	// pass 'nil' as the third parameter.
-	req, err := http.NewRequest("GET", "/hero/1", nil)
-	if err != nil {
-		t.Fatal(err)
+// TestifyMockCall is representation of method call on mock structure
+type TestifyMockCall struct {
+	Method   string
+	Call     []interface{}
+	Response []interface{}
+	Times    int
+}
+
+type expected struct {
+	code int
+}
+
+func TestHeroHandler_GetHeroHandler(t *testing.T) {
+	tests := []struct {
+		name     string
+		storage  []TestifyMockCall
+		json     []TestifyMockCall
+		expected expected
+	}{
+		{
+			name: "should return storage.ErrHeroNotExist on hh.Storage.GetHero",
+			storage: []TestifyMockCall{
+				{
+					Method: "GetHero",
+					Call: []interface{}{
+						AnythingOfType("string"),
+					},
+					Response: []interface{}{
+						storage.Hero{},
+						storage.NewErrHeroNotExist("dummy"),
+					},
+				},
+			},
+			json: []TestifyMockCall{
+				{
+					Method: "Marshal",
+					Call: []interface{}{
+						AnythingOfType("storage.Hero"),
+					},
+					Response: []interface{}{
+						[]byte{},
+						nil,
+					},
+				},
+			},
+			expected: expected{
+				code: http.StatusNotFound,
+			},
+		},
+		{
+			name: "should return default error on hh.Storage.GetHero",
+			storage: []TestifyMockCall{
+				{
+					Method: "GetHero",
+					Call: []interface{}{
+						AnythingOfType("string"),
+					},
+					Response: []interface{}{
+						storage.Hero{},
+						errors.New("dummy"),
+					},
+				},
+			},
+			json: []TestifyMockCall{
+				{
+					Method: "Marshal",
+					Call: []interface{}{
+						AnythingOfType("storage.Hero"),
+					},
+					Response: []interface{}{
+						[]byte{},
+						nil,
+					},
+				},
+			},
+			expected: expected{
+				code: http.StatusInternalServerError,
+			},
+		},
+		{
+			name: "should return error on Marshal json response",
+			storage: []TestifyMockCall{
+				{
+					Method: "GetHero",
+					Call: []interface{}{
+						AnythingOfType("string"),
+					},
+					Response: []interface{}{
+						storage.Hero{},
+						nil,
+					},
+				},
+			},
+			json: []TestifyMockCall{
+				{
+					Method: "Marshal",
+					Call: []interface{}{
+						AnythingOfType("storage.Hero"),
+					},
+					Response: []interface{}{
+						[]byte{},
+						errors.New("marshaler error"),
+					},
+				},
+			},
+			expected: expected{
+				code: http.StatusNotImplemented,
+			},
+		},
+		{
+			name: "should return hero json",
+			storage: []TestifyMockCall{
+				{
+					Method: "GetHero",
+					Call: []interface{}{
+						AnythingOfType("string"),
+					},
+					Response: []interface{}{
+						storage.Hero{},
+						nil,
+					},
+				},
+			},
+			json: []TestifyMockCall{
+				{
+					Method: "Marshal",
+					Call: []interface{}{
+						AnythingOfType("storage.Hero"),
+					},
+					Response: []interface{}{
+						[]byte{},
+						nil,
+					},
+				},
+			},
+			expected: expected{
+				code: http.StatusOK,
+			},
+		},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, err := http.NewRequest("GET", "/hero/1", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
-	rr := httptest.NewRecorder()
+			rr := httptest.NewRecorder()
 
-	s := new(stmocks.Storager)
-	s.On("GetHero", AnythingOfType("string")).Return(storage.Hero{}, nil)
+			s := new(stmocks.Storager)
+			for _, mockCall := range tt.storage {
+				s.On(mockCall.Method, mockCall.Call...).Return(mockCall.Response...)
+			}
 
-	j := new(jsmocks.Marshaler)
-	j.On("Marshal", AnythingOfType("storage.Hero")).Return([]byte{}, errors.New("marshaler error"))
+			j := new(jsmocks.Marshaler)
+			for _, mockCall := range tt.json {
+				j.On(mockCall.Method, mockCall.Call...).Return(mockCall.Response...)
+			}
 
-	hh := HeroHandler{}
-	hh.SetStorage(s)
-	hh.SetJSON(j)
+			hh := HeroHandler{}
+			hh.SetStorage(s)
+			hh.SetJSON(j)
 
-	handler := http.HandlerFunc(hh.GetHeroHandler)
+			handler := http.HandlerFunc(hh.GetHeroHandler)
 
-	// Our handlers satisfy http.HeroHandler, so we can call their ServeHTTP method
-	// directly and pass in our Request and ResponseRecorder.
-	handler.ServeHTTP(rr, req)
+			handler.ServeHTTP(rr, req)
 
-	log.Println(rr.Code, rr.Body.String())
-
-	// Check the status code is what we expect.
-	// if status := rr.Code; status != http.StatusOK {
-	// 	t.Errorf("handler returned wrong status code: got %v want %v",
-	// 		status, http.StatusOK)
-	// }
-
-	// // Check the response body is what we expect.
-	// expected := `{"id":"1","name":"Batman"}`
-	// if rr.Body.String() != expected {
-	// 	t.Errorf("handler returned unexpected body: got %v want %v",
-	// 		rr.Body.String(), expected)
-	// }
+			if rr.Code != tt.expected.code {
+				t.Errorf("handler returned unexpected response code: got %v want %v",
+					rr.Code, tt.expected.code)
+			}
+		})
+	}
 }

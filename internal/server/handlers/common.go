@@ -23,6 +23,7 @@ func (ch *CommonHandler) SetStorage(st storage.Storager) {
 	ch.Storage = st
 }
 
+// SetJSON sets JSON dependency for encoding and decoding JSON
 func (ch *CommonHandler) SetJSON(j json.Marshaler) {
 	ch.JSON = j
 }
