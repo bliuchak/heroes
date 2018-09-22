@@ -58,10 +58,10 @@ func (hh *HeroHandler) GetHeroHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data, err := json.Marshal(h)
+	data, err := hh.JSON.Marshal(h)
 	if err != nil {
 		hh.Logger.Error().Err(err).Msg("Unable to marshall data")
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusNotImplemented)
 		return
 	}
 
