@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"net/http"
 
@@ -25,7 +24,7 @@ func (hh *HeroHandler) GetHeroesHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if len(hs) > 0 {
-		data, err := json.Marshal(hs)
+		data, err := hh.Marshal(hs)
 		if err != nil {
 			hh.Logger.Error().Err(err).Msg("Unable to marshall data")
 			w.WriteHeader(http.StatusInternalServerError)
@@ -58,10 +57,10 @@ func (hh *HeroHandler) GetHeroHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data, err := hh.JSON.Marshal(h)
+	data, err := hh.Marshal(h)
 	if err != nil {
 		hh.Logger.Error().Err(err).Msg("Unable to marshall data")
-		w.WriteHeader(http.StatusNotImplemented)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -81,7 +80,7 @@ func (hh *HeroHandler) CreateHeroHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	var hero storage.Hero
-	err = json.Unmarshal(b, &hero)
+	err = hh.Unmarshal(b, &hero)
 	if err != nil {
 		hh.Logger.Error().Err(err).Msg("Unable to unmarshall data")
 		w.WriteHeader(http.StatusInternalServerError)

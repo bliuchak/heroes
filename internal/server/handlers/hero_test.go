@@ -2,11 +2,12 @@ package handlers
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
-	jsmocks "github.com/bliuchak/heroes/internal/server/json/mocks"
 	"github.com/bliuchak/heroes/internal/storage"
 	stmocks "github.com/bliuchak/heroes/internal/storage/mocks"
 	. "github.com/stretchr/testify/mock"
@@ -24,12 +25,221 @@ type expected struct {
 	code int
 }
 
+type errReader int
+
+func (errReader) Read(p []byte) (n int, err error) {
+	return 0, errors.New("test error")
+}
+
+func TestHeroHandler_GetHeroesHandler(t *testing.T) {
+	tests := []struct {
+		name      string
+		reader    io.Reader
+		storage   []TestifyMockCall
+		marshaler func(v interface{}) ([]byte, error)
+		expected  expected
+	}{
+		{
+			name: "should return error hh.Storage.GetHeroes",
+			storage: []TestifyMockCall{
+				{
+					Method: "GetHeroes",
+					Response: []interface{}{
+						[]storage.Hero{
+							storage.Hero{ID: "1", Name: "Batman"},
+							storage.Hero{ID: "2", Name: "Superman"},
+						},
+						errors.New("get heroes error"),
+					},
+				},
+			},
+			expected: expected{
+				code: http.StatusInternalServerError,
+			},
+		},
+		{
+			name: "should return error hh.Marshal",
+			storage: []TestifyMockCall{
+				{
+					Method: "GetHeroes",
+					Response: []interface{}{
+						[]storage.Hero{
+							storage.Hero{ID: "1", Name: "Batman"},
+							storage.Hero{ID: "2", Name: "Superman"},
+						},
+						nil,
+					},
+				},
+			},
+			marshaler: func(v interface{}) ([]byte, error) {
+				return []byte{}, errors.New("marshal error")
+			},
+			expected: expected{
+				code: http.StatusInternalServerError,
+			},
+		},
+		{
+			name: "should return heroes",
+			storage: []TestifyMockCall{
+				{
+					Method: "GetHeroes",
+					Response: []interface{}{
+						[]storage.Hero{
+							storage.Hero{ID: "1", Name: "Batman"},
+							storage.Hero{ID: "2", Name: "Superman"},
+						},
+						nil,
+					},
+				},
+			},
+			expected: expected{
+				code: http.StatusOK,
+			},
+		},
+		{
+			name: "should return no heroes (empty array)",
+			storage: []TestifyMockCall{
+				{
+					Method: "GetHeroes",
+					Response: []interface{}{
+						[]storage.Hero{},
+						nil,
+					},
+				},
+			},
+			expected: expected{
+				code: http.StatusNoContent,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hh := HeroHandler{}
+			rr := httptest.NewRecorder()
+
+			s := new(stmocks.Storager)
+			for _, mockCall := range tt.storage {
+				s.On(mockCall.Method, mockCall.Call...).Return(mockCall.Response...)
+			}
+
+			hh.SetStorage(s)
+
+			if tt.marshaler != nil {
+				hh.Marshaler = tt.marshaler
+			}
+
+			r := httptest.NewRequest("GET", "/heroes", nil)
+			hh.GetHeroesHandler(rr, r)
+
+			if rr.Code != tt.expected.code {
+				t.Errorf("handler returned unexpected response code: got %v want %v",
+					rr.Code, tt.expected.code)
+			}
+		})
+	}
+}
+
+func TestHeroHandler_CreateHeroHandler(t *testing.T) {
+	tests := []struct {
+		name        string
+		reader      io.Reader
+		storage     []TestifyMockCall
+		unmarshaler func(data []byte, v interface{}) error
+		expected    expected
+	}{
+		{
+			name:   "should return error from ioutil.ReadAll",
+			reader: errReader(0),
+			expected: expected{
+				code: http.StatusInternalServerError,
+			},
+		},
+		{
+			name: "should return error from hh.Unmarshal",
+			unmarshaler: func(data []byte, v interface{}) error {
+				return errors.New("unmarshal error")
+			},
+			expected: expected{
+				code: http.StatusInternalServerError,
+			},
+		},
+		{
+			name:   "should return error hh.Storage.CreateHero",
+			reader: strings.NewReader(`{"id":"1","name":"Batman"}`),
+			storage: []TestifyMockCall{
+				{
+					Method: "CreateHero",
+					Call: []interface{}{
+						AnythingOfType("string"),
+						AnythingOfType("string"),
+					},
+					Response: []interface{}{
+						errors.New("create hero error"),
+					},
+				},
+			},
+			expected: expected{
+				code: http.StatusInternalServerError,
+			},
+		},
+		{
+			name:   "should create hero",
+			reader: strings.NewReader(`{"id":"1","name":"Batman"}`),
+			storage: []TestifyMockCall{
+				{
+					Method: "CreateHero",
+					Call: []interface{}{
+						AnythingOfType("string"),
+						AnythingOfType("string"),
+					},
+					Response: []interface{}{
+						nil,
+					},
+				},
+			},
+			expected: expected{
+				code: http.StatusOK,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hh := HeroHandler{}
+			rr := httptest.NewRecorder()
+
+			reader := io.Reader(nil)
+			if tt.reader != nil {
+				reader = tt.reader
+			}
+
+			s := new(stmocks.Storager)
+			for _, mockCall := range tt.storage {
+				s.On(mockCall.Method, mockCall.Call...).Return(mockCall.Response...)
+			}
+
+			hh.SetStorage(s)
+
+			r := httptest.NewRequest("POST", "/hero", reader)
+			hh.CreateHeroHandler(rr, r)
+
+			if tt.unmarshaler != nil {
+				hh.Unmarshaler = tt.unmarshaler
+			}
+
+			if rr.Code != tt.expected.code {
+				t.Errorf("handler returned unexpected response code: got %v want %v",
+					rr.Code, tt.expected.code)
+			}
+		})
+	}
+}
+
 func TestHeroHandler_GetHeroHandler(t *testing.T) {
 	tests := []struct {
-		name     string
-		storage  []TestifyMockCall
-		json     []TestifyMockCall
-		expected expected
+		name      string
+		storage   []TestifyMockCall
+		marshaler func(v interface{}) ([]byte, error)
+		expected  expected
 	}{
 		{
 			name: "should return storage.ErrHeroNotExist on hh.Storage.GetHero",
@@ -42,18 +252,6 @@ func TestHeroHandler_GetHeroHandler(t *testing.T) {
 					Response: []interface{}{
 						storage.Hero{},
 						storage.NewErrHeroNotExist("dummy"),
-					},
-				},
-			},
-			json: []TestifyMockCall{
-				{
-					Method: "Marshal",
-					Call: []interface{}{
-						AnythingOfType("storage.Hero"),
-					},
-					Response: []interface{}{
-						[]byte{},
-						nil,
 					},
 				},
 			},
@@ -75,18 +273,6 @@ func TestHeroHandler_GetHeroHandler(t *testing.T) {
 					},
 				},
 			},
-			json: []TestifyMockCall{
-				{
-					Method: "Marshal",
-					Call: []interface{}{
-						AnythingOfType("storage.Hero"),
-					},
-					Response: []interface{}{
-						[]byte{},
-						nil,
-					},
-				},
-			},
 			expected: expected{
 				code: http.StatusInternalServerError,
 			},
@@ -105,20 +291,11 @@ func TestHeroHandler_GetHeroHandler(t *testing.T) {
 					},
 				},
 			},
-			json: []TestifyMockCall{
-				{
-					Method: "Marshal",
-					Call: []interface{}{
-						AnythingOfType("storage.Hero"),
-					},
-					Response: []interface{}{
-						[]byte{},
-						errors.New("marshaler error"),
-					},
-				},
+			marshaler: func(v interface{}) ([]byte, error) {
+				return []byte{}, errors.New("marshal error")
 			},
 			expected: expected{
-				code: http.StatusNotImplemented,
+				code: http.StatusInternalServerError,
 			},
 		},
 		{
@@ -131,18 +308,6 @@ func TestHeroHandler_GetHeroHandler(t *testing.T) {
 					},
 					Response: []interface{}{
 						storage.Hero{},
-						nil,
-					},
-				},
-			},
-			json: []TestifyMockCall{
-				{
-					Method: "Marshal",
-					Call: []interface{}{
-						AnythingOfType("storage.Hero"),
-					},
-					Response: []interface{}{
-						[]byte{},
 						nil,
 					},
 				},
@@ -166,14 +331,13 @@ func TestHeroHandler_GetHeroHandler(t *testing.T) {
 				s.On(mockCall.Method, mockCall.Call...).Return(mockCall.Response...)
 			}
 
-			j := new(jsmocks.Marshaler)
-			for _, mockCall := range tt.json {
-				j.On(mockCall.Method, mockCall.Call...).Return(mockCall.Response...)
-			}
-
 			hh := HeroHandler{}
 			hh.SetStorage(s)
-			hh.SetJSON(j)
+
+			// set custom marshaler to trigger error
+			if tt.marshaler != nil {
+				hh.Marshaler = tt.marshaler
+			}
 
 			handler := http.HandlerFunc(hh.GetHeroHandler)
 
