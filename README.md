@@ -1,6 +1,7 @@
 # Heroes
 
 [![Maintainability](https://api.codeclimate.com/v1/badges/b296b77da374de5180ae/maintainability)](https://codeclimate.com/github/bliuchak/heroes/maintainability)
+[![CircleCI](https://circleci.com/gh/bliuchak/heroes.svg?style=svg)](https://circleci.com/gh/bliuchak/heroes)
 
 Http server which provides basic CRUD functionality about superheroes (ID and Name).
 I'm using here http package from stdlib, gorillamux and Redis for storage.
