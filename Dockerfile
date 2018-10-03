@@ -1,3 +1,4 @@
+# OUTDATED
 FROM golang as builder
 
 COPY cmd /go/src/github.com/bliuchak/heroes/cmd
