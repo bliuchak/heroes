@@ -9,11 +9,12 @@ import (
 
 // SetRoutes setter for basic routes
 func (s *Server) SetRoutes() {
+	statusHandler := handlers.StatusHandler{}
+	statusHandler.SetStorage(s.Storage)
+
 	heroHandler := handlers.HeroHandler{}
 	heroHandler.SetLogger(s.Logger)
 	heroHandler.SetStorage(s.Storage)
-
-	statusHandler := handlers.StatusHandler{}
 
 	s.Router.HandleFunc("/status", statusHandler.GetStatusHandler).Methods(http.MethodGet)
 	s.Router.HandleFunc("/heroes", heroHandler.GetHeroesHandler).Methods(http.MethodGet)

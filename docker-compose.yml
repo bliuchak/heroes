@@ -12,17 +12,9 @@ services:
     ports:
       - 3001:3000
     volumes:
-      - .:/go/src/github.com/bliuchak/heroes
-    networks:
-      - local
+      - .:/opt/heroes
 
   redis:
     image: redis:latest
     ports:
       - 6379:6379
-    networks:
-      - local
-
-networks:
-  local:
-    external: true
