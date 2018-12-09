@@ -1,11 +1,10 @@
 package db
 
 import (
-	"strconv"
 	"strings"
 
 	"github.com/bliuchak/heroes/internal/storage"
-	"github.com/go-redis/redis"
+	"github.com/mediocregopher/radix/v3"
 )
 
 const (
@@ -13,85 +12,83 @@ const (
 )
 
 // Redis contains client which operates with storage
-// TODO: define interface for redis
 type Redis struct {
-	Client redis.Client
+	client radix.Client
 }
 
 // NewRedis returns pointer to Redis structure with filled data
-func NewRedis(host, password string, port int) (*Redis, error) {
-	opt := redis.Options{
-		Addr:     host + ":" + strconv.Itoa(port),
-		Password: password,
-		DB:       0,
-	}
-	c := redis.NewClient(&opt)
-
-	_, err := c.Ping().Result()
+func NewRedis(host, password, port string) (*Redis, error) {
+	pool, err := radix.NewPool("tcp", host+":"+port, 10)
 	if err != nil {
-		return &Redis{}, err
+		return nil, err
 	}
 
-	return &Redis{Client: *c}, nil
+	return &Redis{client: pool}, nil
 }
 
 // Status checks storage connection status
 func (r *Redis) Status() (string, error) {
-	return r.Client.Ping().Result()
+	var status string
+	if err := r.client.Do(radix.Cmd(&status, "PING")); err != nil {
+		return status, err
+	}
+
+	return status, nil
 }
 
 // GetHeroes gets all heroes
 func (r *Redis) GetHeroes() ([]storage.Hero, error) {
 	var heroes []storage.Hero
 
-	iter := r.Client.Scan(0, heroPrefix+".*", 100).Iterator()
-	for iter.Next() {
-		id := strings.Split(iter.Val(), ".")
-		name, err := r.Client.Get(iter.Val()).Result()
-		if err != nil {
+	opts := radix.ScanOpts{
+		Command: "SCAN",
+		Pattern: heroPrefix + ".*",
+		Count:   100,
+	}
+	scanner := radix.NewScanner(r.client, opts)
+
+	var key string
+	for scanner.Next(&key) {
+		id := strings.Split(key, ".")
+		var name string
+		if err := r.client.Do(radix.Cmd(&name, "GET", key)); err != nil {
 			return []storage.Hero{}, err
 		}
 		heroes = append(heroes, storage.Hero{ID: id[1], Name: name})
 	}
-	if err := iter.Err(); err != nil {
+
+	if err := scanner.Close(); err != nil {
 		return []storage.Hero{}, err
 	}
+
 	return heroes, nil
 }
 
 // GetHero gets hero by ID
 func (r *Redis) GetHero(id string) (storage.Hero, error) {
-	res, err := r.Client.Get(heroPrefix + "." + id).Result()
-	if err != nil {
-		if err.Error() == "redis: nil" {
-			return storage.Hero{}, storage.NewErrHeroNotExist("hero not exist")
-		}
+	var exists int
+	if err := r.client.Do(radix.Cmd(&exists, "EXISTS", heroPrefix+"."+id)); err != nil {
 		return storage.Hero{}, err
 	}
 
-	return storage.Hero{ID: id, Name: res}, nil
+	if exists == 0 {
+		return storage.Hero{}, storage.NewErrHeroNotExist("hero not exist")
+	}
+
+	var name string
+	if err := r.client.Do(radix.Cmd(&name, "GET", heroPrefix+"."+id)); err != nil {
+		return storage.Hero{}, err
+	}
+
+	return storage.Hero{ID: id, Name: name}, nil
 }
 
 // CreateHero creates new hero by ID and Name
 func (r *Redis) CreateHero(id, name string) error {
-	_, err := r.Client.Set(heroPrefix+"."+id, name, 0).Result()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.client.Do(radix.Cmd(&name, "SET", heroPrefix+"."+id, name))
 }
 
 // DeleteHero deletes hero by ID
 func (r *Redis) DeleteHero(id string) error {
-	res, err := r.Client.Del(heroPrefix + "." + id).Result()
-	if err != nil {
-		return err
-	}
-
-	if res == 0 {
-		return storage.NewErrNothingToDelete("nothing to delete")
-	}
-
-	return nil
+	return r.client.Do(radix.Cmd(nil, "DEL", heroPrefix+"."+id))
 }

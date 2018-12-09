@@ -42,7 +42,7 @@ func (a *App) InitStorage() error {
 
 // Run runs server from App structure
 func (a *App) Run() error {
-	a.Logger.Info().Msg("Run app")
+	a.Logger.Info().Int("port", a.Config.Server.Port).Msg("Run app")
 
 	a.Server = server.NewServer(a.Storage, a.Logger, a.Config)
 

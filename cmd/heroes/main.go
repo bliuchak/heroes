@@ -7,9 +7,9 @@ import (
 )
 
 var (
-	appport    = kingpin.Flag("appport", "port where to run app").Envar("APP_PORT").Int()
+	appport    = kingpin.Flag("appport", "port where to run app").Envar("APP_PORT").Default("3001").Int()
 	dbhost     = kingpin.Flag("dbhost", "storage host").Envar("DB_HOST").String()
-	dbport     = kingpin.Flag("dbport", "storage port").Envar("DB_PORT").Int()
+	dbport     = kingpin.Flag("dbport", "storage port").Envar("DB_PORT").String()
 	dbpassword = kingpin.Flag("dbpassword", "storage password").Envar("DB_PASSWORD").String()
 )
 

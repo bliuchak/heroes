@@ -19,7 +19,7 @@ type Serverer interface {
 	Run() error
 }
 
-// Server app container for main dependenciess
+// Server app container for main dependencies
 type Server struct {
 	Router  *mux.Router
 	Storage storage.Storager

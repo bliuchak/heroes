@@ -9,7 +9,7 @@ type Config struct {
 // Database contains database config data
 type Database struct {
 	Host     string
-	Port     int
+	Port     string
 	Password string
 }
 
@@ -19,7 +19,7 @@ type Server struct {
 }
 
 // NewConfig returns pointer on Config with filled data
-func NewConfig(appport int, dbhost string, dbport int, dbpassword string) *Config {
+func NewConfig(appport int, dbhost string, dbport string, dbpassword string) *Config {
 	return &Config{
 		Database: Database{
 			Host:     dbhost,
