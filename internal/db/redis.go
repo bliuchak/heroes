@@ -85,18 +85,10 @@ func (r *Redis) GetHero(id string) (storage.Hero, error) {
 
 // CreateHero creates new hero by ID and Name
 func (r *Redis) CreateHero(id, name string) error {
-	if err := r.client.Do(radix.Cmd(&name, "SET", heroPrefix+"."+id, name)); err != nil {
-		return err
-	}
-
-	return nil
+	return r.client.Do(radix.Cmd(&name, "SET", heroPrefix+"."+id, name))
 }
 
 // DeleteHero deletes hero by ID
 func (r *Redis) DeleteHero(id string) error {
-	if err := r.client.Do(radix.Cmd(nil, "DEL", heroPrefix+"."+id)); err != nil {
-		return err
-	}
-
-	return nil
+	return r.client.Do(radix.Cmd(nil, "DEL", heroPrefix+"."+id))
 }
