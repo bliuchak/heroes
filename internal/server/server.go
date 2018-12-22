@@ -17,7 +17,7 @@ import (
 type Serverer interface {
 	InitRouter()
 	SetMiddleware()
-	Run() error
+	Start() error
 	Stop(timeout time.Duration) error
 }
 
@@ -53,8 +53,8 @@ func (s *Server) SetMiddleware() {
 	s.Router.Use(md.HTTPLogger)
 }
 
-// Run runs http server
-func (s *Server) Run() error {
+// Start runs http server
+func (s *Server) Start() error {
 	s.InitRouter()
 	s.SetRoutes()
 
@@ -67,11 +67,7 @@ func (s *Server) Run() error {
 		ReadTimeout:  1 * time.Second,
 	}
 
-	err := s.httpServer.ListenAndServe()
-	if err != nil {
-		return err
-	}
-	return nil
+	return s.httpServer.ListenAndServe()
 }
 
 // Stop shutdown http server with timeout

@@ -1,8 +1,6 @@
 package heroes
 
 import (
-	"os"
-
 	"github.com/bliuchak/heroes/internal/config"
 	"github.com/bliuchak/heroes/internal/db"
 	"github.com/bliuchak/heroes/internal/server"
@@ -18,19 +16,15 @@ type App struct {
 	Config  config.Config
 }
 
-// NewApplication returns pointer to App structure with filled data
-func NewApplication(config config.Config) *App {
+// NewApplication returns pointer to App structure with config and logger
+func NewApplication(c config.Config, l zerolog.Logger) *App {
 	return &App{
-		Config: config,
+		Config: c,
+		Logger: l,
 	}
 }
 
-// InitLogger sets logger to App structure
-func (a *App) InitLogger() {
-	a.Logger = zerolog.New(os.Stdout).Output(zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger()
-}
-
-// InitStorage sets database to App structure
+// InitStorage initialize application storage
 func (a *App) InitStorage() error {
 	s, err := db.NewRedis(a.Config.Database.Host, a.Config.Database.Password, a.Config.Database.Port)
 	if err != nil {
@@ -40,15 +34,7 @@ func (a *App) InitStorage() error {
 	return nil
 }
 
-// Run runs server from App structure
-func (a *App) Run() error {
-	a.Logger.Info().Int("port", a.Config.Server.Port).Msg("Run app")
-
+// InitServer initialise application server
+func (a *App) InitServer() {
 	a.Server = server.NewServer(a.Storage, a.Logger, a.Config)
-
-	err := a.Server.Run()
-	if err != nil {
-		return err
-	}
-	return nil
 }
