@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"time"
@@ -16,7 +17,8 @@ import (
 type Serverer interface {
 	InitRouter()
 	SetMiddleware()
-	Run() error
+	Start() error
+	Stop(timeout time.Duration) error
 }
 
 // Server app container for main dependencies
@@ -25,6 +27,8 @@ type Server struct {
 	Storage storage.Storager
 	Logger  zerolog.Logger
 	Config  config.Config
+
+	httpServer *http.Server
 }
 
 // NewServer create pointer for new server structure
@@ -36,7 +40,7 @@ func NewServer(storage storage.Storager, logger zerolog.Logger, config config.Co
 	}
 }
 
-// InitRouter initnialise router
+// InitRouter initialize router
 func (s *Server) InitRouter() {
 	s.Router = mux.NewRouter()
 }
@@ -49,23 +53,26 @@ func (s *Server) SetMiddleware() {
 	s.Router.Use(md.HTTPLogger)
 }
 
-// Run runs http server
-func (s *Server) Run() error {
+// Start runs http server
+func (s *Server) Start() error {
 	s.InitRouter()
 	s.SetRoutes()
 
 	s.SetMiddleware()
 
-	server := &http.Server{
+	s.httpServer = &http.Server{
 		Handler:      s.Router,
 		Addr:         ":" + strconv.Itoa(s.Config.Server.Port),
 		WriteTimeout: 1 * time.Second,
 		ReadTimeout:  1 * time.Second,
 	}
 
-	err := server.ListenAndServe()
-	if err != nil {
-		return err
-	}
-	return nil
+	return s.httpServer.ListenAndServe()
+}
+
+// Stop shutdown http server with timeout
+func (s *Server) Stop(timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	return s.httpServer.Shutdown(ctx)
 }
