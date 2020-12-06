@@ -1,0 +1,116 @@
+openapi: "3.0.0"
+info:
+  version: 0.0.1
+  title: Heroes
+  license:
+    name: MIT
+paths:
+  /status:
+    get:
+      summary: Get status
+      operationId: getStatus
+      tags:
+        - server
+      responses:
+        '200':
+          description: A paged displaying application status
+          content:
+            application/json:    
+              schema:
+                $ref: "#/components/schemas/Status"
+  /heroes:
+    get:
+      summary: Get all heroes
+      operationId: showAllHeroes
+      tags:
+        - heroes
+      responses:
+        '200':
+          description: Expected response to a valid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Heroes"
+        '204':
+          description: No heroes to display
+        '500':
+          description: Unexpected error
+  /hero/{heroId}:
+    get:
+      summary: Get specific hero
+      operationId: showHeroById
+      tags:
+        - heroes
+      parameters:
+        - name: heroId
+          in: path
+          required: true
+          description: The id of the hero to retrieve
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Expected response to a valid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hero"
+        '404':
+          description: Hero not exist
+        '500':
+          description: Unexpected error
+    delete:
+      summary: Delete hero
+      operationId: deleteHero
+      tags:
+        - heroes
+      parameters:
+        - name: heroId
+          in: path
+          required: true
+          description: The id of the hero to retrieve
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Null response
+        '404':
+          description: Nothing to delete
+        '500':
+          description: Unexpected error
+  /hero:
+    post:
+      summary: Create a hero
+      operationId: createHero
+      requestBody:
+        description: Hero to add
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Hero'
+      tags:
+        - heroes
+      responses:
+        '200':
+          description: Null response
+components:
+  schemas:
+    Status:
+      properties:
+        storage:
+          type: string
+    Hero:
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+    Heroes:
+      type: array
+      items:
+        $ref: "#/components/schemas/Hero"
+
