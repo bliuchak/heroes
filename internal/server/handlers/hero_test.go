@@ -3,13 +3,17 @@ package handlers
 import (
 	"errors"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/bliuchak/heroes/internal/db"
 	"github.com/bliuchak/heroes/internal/storage"
 	stmocks "github.com/bliuchak/heroes/internal/storage/mocks"
+	"github.com/davecgh/go-spew/spew"
+	"github.com/rs/zerolog"
 	. "github.com/stretchr/testify/mock"
 )
 
@@ -436,4 +440,32 @@ func TestHeroHandler_DeleteHeroHandler(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Functional tests
+
+func TestHeroHandlerFunctional_GetHeroesHandler(t *testing.T) {
+	hh := HeroHandler{}
+
+	db, _ := db.NewRedis("localhost", "", "6379")
+	hh.SetStorage(db)
+
+	log := zerolog.Nop()
+	hh.SetLogger(log)
+
+	s := &http.Server{
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			hh.GetHeroesHandler(w, r)
+		}),
+	}
+
+	l, err := net.Listen("tcp", ":0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
+	go s.Serve(l)
+
+	res, err := http.Get("http://" + l.Addr().String() + "/heroes")
+	spew.Dump(res.StatusCode, err)
 }
